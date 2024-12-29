@@ -14,7 +14,10 @@ import {
   faFileAlt, 
   faFileCode, 
   faFileArchive, 
-  faFileText 
+  faFileText,
+  faCircleDown,
+  faTrash,
+  faEllipsisVertical
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -27,50 +30,35 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+import { Button } from "./button";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
 import Link from "next/link";
 
-function formatFileSize(bytes) {
-  if (bytes < 1024) {
-    return `${bytes} B`; // Ako je veličina manja od 1 KB, prikazuje u B
-  } else if (bytes < 1024 * 1024) {
-    const kb = bytes / 1024;
-    return `${kb.toFixed(2)} KB`; // Prikazuje u KB sa 2 decimale
-  } else if (bytes < 1024 * 1024 * 1024) {
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(2)} MB`; // Prikazuje u MB sa 2 decimale
-  } else {
-    const gb = bytes / (1024 * 1024 * 1024);
-    return `${gb.toFixed(2)} GB`; // Prikazuje u GB sa 2 decimale
-  }
-}
+import { formatFileSize, formatDate } from "@/lib/utils";
 
-function formatDate(timestamp) {
-  const now = new Date();
-  const date = new Date(timestamp * 1000); // UNIX timestamp je u sekundama, pa množi sa 1000 za milisekunde
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
-  // Proveri ako je datum danas
-  if (now.toDateString() === date.toDateString()) {
-    return "Today";
-  }
+import axios from "axios";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-  // Proveri ako je datum juče
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (yesterday.toDateString() === date.toDateString()) {
-    return "Yesterday";
-  }
-
-  // Proveri ako je datum u ovoj sedmici
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay()); // Prvi dan sedmice
-  if (date >= startOfWeek) {
-    return "This week";
-  }
-
-  // Ako nije ni jedan od prethodnih, formatiraj kao mesec dan, godina
-  const options = { year: "numeric", month: "short", day: "numeric" };
-  return date.toLocaleDateString("en-US", options); // Ispisuje kao "Sep 18, 2024"
-}
 
 function checkIcon(fileType) {
     if (fileType === 'folder') {
@@ -133,6 +121,10 @@ function checkIcon(fileType) {
 }
 
 const FileComponent = ({file}) => {
+
+    const { toast } = useToast();
+    
+
     const router = useRouter();
 
     const handleClick = () => {
@@ -144,18 +136,206 @@ const FileComponent = ({file}) => {
         }
     };
 
+
+    const handleDelete = async () => {
+      try {
+        const response = await axios.delete(
+          `http://37.205.26.74:8000/delete${file.path.replace("/drive", "")}`
+        );
+
+        toast({
+          title: "Success.",
+          description: "File or directory deleted successfully.",
+        });
+      } catch (error) {
+        // Provera da li je greška došla sa servera
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.detail
+        ) {
+          toast({
+            title: "Error.",
+            description: error.response.data.detail, // Detaljna poruka o grešci sa servera
+          });
+        } else {
+          // Generalna greška ako ne postoji detaljan odgovor
+          toast({
+            title: "Uh oh! Something went wrong.",
+            description: "There was a problem with your request.",
+          });
+        }
+      }
+    };
+
+  const handleDownload = async () => {
+    try {
+      // Posaljite zahtev za preuzimanje fajla
+      const response = await axios.get(
+        `http://37.205.26.74:8000/download${file.path.replace("/drive", "")}`,
+        {
+          responseType: "blob", // Važno za preuzimanje fajla kao blob
+        }
+      );
+
+      // Kreiranje URL-a za preuzeti fajl
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+
+      // Kreirajte link za preuzimanje i kliknite na njega
+      const link = document.createElement("a");
+      link.href = url;
+
+      // Ako je preuzimanje direktorijuma, dodeljujemo ZIP ekstenziju
+      const filename = file.name.endsWith(".zip")
+        ? file.name
+        : `${file.name}.zip`;
+      link.setAttribute("download", filename); // Koristite ime fajla za preuzimanje
+      document.body.appendChild(link);
+      link.click(); // Aktivirajte preuzimanje
+
+      // Očistite URL nakon preuzimanja
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success.",
+        description: "Download started successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Uh oh! Something went wrong.",
+        description: "There was a problem with your request.",
+      });
+    }
+  };
+
      return (
-        
-       <TableRow className="border-b border-b-gray-600 hover:cursor-pointer" onClick={handleClick}>
-           <TableCell className="p-4">
-             <FontAwesomeIcon className="w-6 h-6" icon={checkIcon(file.type)} />
-           </TableCell>
-           <TableCell>{file.name}</TableCell>
-           <TableCell>{formatFileSize(file.size)}</TableCell>
-           <TableCell>{formatDate(file.created)}</TableCell>
-           <TableCell>{formatDate(file.modified)}</TableCell>
+       <TableRow className="border-b border-b-gray-600 hover:cursor-pointer">
+         {/* Ikona tipa fajla */}
+         <TableCell className="p-4" onClick={handleClick}>
+           <FontAwesomeIcon className="w-6 h-6" icon={checkIcon(file.type)} />
+         </TableCell>
+
+         {/* Naziv fajla */}
+         <TableCell className="max-w-[200px] break-words" onClick={handleClick}>
+           {file.name}
+         </TableCell>
+
+         {/* Ostale kolone (vidljive samo na većim ekranima) */}
+         <TableCell className="hidden lg:table-cell" onClick={handleClick}>
+           {formatFileSize(file.size)}
+         </TableCell>
+         <TableCell className="hidden lg:table-cell" onClick={handleClick}>
+           {formatDate(file.created)}
+         </TableCell>
+         <TableCell className="hidden lg:table-cell" onClick={handleClick}>
+           {formatDate(file.modified)}
+         </TableCell>
+
+         {/* Ikona za preuzimanje */}
+         <TableCell className="hidden lg:table-cell">
+           <FontAwesomeIcon
+             className="w-6 h-6"
+             icon={faCircleDown}
+             onClick={handleDownload} // Pozivanje funkcije za preuzimanje
+           />
+         </TableCell>
+
+         {/* Ikona za brisanje */}
+         <TableCell className="hidden lg:table-cell">
+           <Dialog>
+             <DialogTrigger asChild>
+               <FontAwesomeIcon
+                 className="w-6 h-6 text-red-700"
+                 icon={faTrash}
+               />
+             </DialogTrigger>
+             <DialogContent className="sm:max-w-[425px]">
+               <DialogHeader>
+                 <DialogTitle>Are you sure</DialogTitle>
+                 <DialogDescription>
+                   Deleting this file is an irreversible action!
+                 </DialogDescription>
+                 <div className="h-6"></div>
+               </DialogHeader>
+               <DialogFooter>
+                 <Button
+                   type="submit"
+                   variant="destructive"
+                   onClick={handleDelete}
+                 >
+                   Yes, I am sure
+                 </Button>
+               </DialogFooter>
+             </DialogContent>
+           </Dialog>
+         </TableCell>
+
+         {/* Dugme za opcije */}
+         <TableCell className="lg:hidden">
+           <DropdownMenu>
+             <DropdownMenuTrigger asChild>
+               <FontAwesomeIcon icon={faEllipsisVertical} className="w-6 h-6" />
+             </DropdownMenuTrigger>
+
+             <DropdownMenuContent className="">
+               <DropdownMenuLabel>File information</DropdownMenuLabel>
+
+               <DropdownMenuItem>
+                 Size: <b>{formatFileSize(file.size)}</b>
+               </DropdownMenuItem>
+               <DropdownMenuItem>
+                 Created at: <b>{formatDate(file.created)}</b>
+               </DropdownMenuItem>
+               <DropdownMenuItem>
+                 Modified at: <b>{formatDate(file.modified)}</b>
+               </DropdownMenuItem>
+
+               <DropdownMenuSeparator />
+               <DropdownMenuLabel>File actions</DropdownMenuLabel>
+
+               {/* Download button */}
+               <DropdownMenuItem>
+                 <p onClick={(e) => handleDownload(e)}>Download</p>
+               </DropdownMenuItem>
+
+               {/* Delete button with Dialog */}
+               <DropdownMenuItem
+                 onClick={(e) => {
+                   e.stopPropagation(); // Sprečava zatvaranje DropdownMenu
+                 }}
+               >
+                 <Dialog>
+                   <DialogTrigger asChild>
+                     <p>Delete</p>
+                   </DialogTrigger>
+                   <DialogContent className="sm:max-w-[425px]">
+                     <DialogHeader>
+                       <DialogTitle>Are you sure</DialogTitle>
+                       <DialogDescription>
+                         Deleting this file is an irreversible action!
+                       </DialogDescription>
+                       <div className="h-6"></div>
+                     </DialogHeader>
+                     <DialogFooter>
+                       <Button
+                         type="submit"
+                         variant="destructive"
+                         onClick={handleDelete}
+                       >
+                         Yes, I am sure
+                       </Button>
+                     </DialogFooter>
+                   </DialogContent>
+                 </Dialog>
+               </DropdownMenuItem>
+             </DropdownMenuContent>
+           </DropdownMenu>
+         </TableCell>
        </TableRow>
      );
 }
 
 export default FileComponent;
+
+
+ 
