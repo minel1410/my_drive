@@ -1,9 +1,10 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import FileComponent from "../../components/ui/File";
 import { usePathname } from "next/navigation";
+import { faCompactDisc } from "@fortawesome/free-solid-svg-icons";
 import {
   Table,
   TableBody,
@@ -13,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+import { formatFileSize } from "@/lib/utils";
 
 import {
   Dialog,
@@ -24,6 +27,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Progress } from "@/components/ui/progress";
 
 import {
   ContextMenu,
@@ -44,125 +50,116 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-
-
+import { useRouter } from "next/navigation";
+import ProtectedRoute from "../context/ProtectedRoute";
+import Link from "next/link";
 
 export default function Drive() {
-  const [files, setFiles] = useState([]);
+  const [drives, setDrives] = useState([]);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // Dodato stanje za loading
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
-    console.log(pathname)
-    const fetchFiles = async () => {
+    console.log(drives);
+    const fetchDrives = async () => {
       try {
-        const response = await axios.get(`http://37.205.26.74:8000${pathname}`);
+        setIsLoading(true); // Postavi loading na true dok čekamo podatke
+        const response = await axios.get(`http://37.205.26.74:8000/drive`);
 
         // Proveri da li je odgovor validan
-        if (response && response.data && response.data.items) {
-          setFiles(response.data.items);
+        if (response && response.data) {
+          setDrives(response.data);
         } else {
-          setError("No files found in the response.");
+          setError("No Drives found in the response.");
         }
       } catch (err) {
         // Ako dođe do greške u mrežnoj komunikaciji
-        setError("An error occurred while fetching files: " + err.message);
+        setError("An error occurred while fetching Drives: " + err.message);
+      } finally {
+        setIsLoading(false); // Kada je završeno sa fetch-ovanjem, postavi loading na false
       }
     };
 
-    fetchFiles();
+    fetchDrives();
   }, []);
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger className="">
-        <div className="relative overflow-x-auto lg:p-16">
-          <div className="flex w-full justify-between py-6">
-            <h1 className="font-bold text-xl">My Drive</h1>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>Upload a file</Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Upload a file</DialogTitle>
-                  <DialogDescription>
-                    Select or drag and drope a file to upload
-                  </DialogDescription>
-                </DialogHeader>
+    <ProtectedRoute>
+      <div className="relative overflow-x-auto px-4 md:px-16 lg:px-32 py-6">
+        <div className="flex w-full justify-between py-6">
+          <Link href="/drive" className="font-bold text-xl">My Drive</Link>
+        </div>
 
-                <div className="">
-                  <Input id="picture" type="file" className="" />
-                </div>
-
-                <DialogFooter>
-                  <Button type="submit" className="mt-4">
-                    Upload the file
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+        {/* Prikazivanje Loading indikatora */}
+        {isLoading ? (
+          <div className="w-full h-[60vh] flex items-center justify-center">
+            <svg
+              className="w-12 h-12 text-gray-300 animate-spin"
+              viewBox="0 0 64 64"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+            >
+              <path
+                d="M32 3C35.8083 3 39.5794 3.75011 43.0978 5.20749C46.6163 6.66488 49.8132 8.80101 52.5061 11.4939C55.199 14.1868 57.3351 17.3837 58.7925 20.9022C60.2499 24.4206 61 28.1917 61 32C61 35.8083 60.2499 39.5794 58.7925 43.0978C57.3351 46.6163 55.199 49.8132 52.5061 52.5061C49.8132 55.199 46.6163 57.3351 43.0978 58.7925C39.5794 60.2499 35.8083 61 32 61C28.1917 61 24.4206 60.2499 20.9022 58.7925C17.3837 57.3351 14.1868 55.199 11.4939 52.5061C8.801 49.8132 6.66487 46.6163 5.20749 43.0978C3.7501 39.5794 3 35.8083 3 32C3 28.1917 3.75011 24.4206 5.2075 20.9022C6.66489 17.3837 8.80101 14.1868 11.4939 11.4939C14.1868 8.80099 17.3838 6.66487 20.9022 5.20749C24.4206 3.7501 28.1917 3 32 3L32 3Z"
+                stroke="currentColor"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              ></path>
+              <path
+                d="M32 3C36.5778 3 41.0906 4.08374 45.1692 6.16256C49.2477 8.24138 52.7762 11.2562 55.466 14.9605C58.1558 18.6647 59.9304 22.9531 60.6448 27.4748C61.3591 31.9965 60.9928 36.6232 59.5759 40.9762"
+                stroke="currentColor"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-gray-900"
+              ></path>
+            </svg>
           </div>
-
+        ) : (
           <Table>
             <TableCaption></TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead colSpan={2} className="">
-                  Name
-                </TableHead>
+                <TableHead colSpan={2}>Name</TableHead>
                 <TableHead>Size</TableHead>
-                <TableHead>Created at</TableHead>
-                <TableHead>Modified at</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
-              {files.map((file, index) => {
-                return <FileComponent key={index} file={file} />;
-              })}
+              {drives.map((drive, index) => (
+                <TableRow
+                  key={index}
+                  onClick={() => {
+                    router.push(`/drive/${drive.device}`);
+                  }}
+                  className="border-b border-b-gray-600 hover:cursor-pointer"
+                >
+                  <TableCell className="p-4">
+                    <FontAwesomeIcon className="w-6 h-6" icon={faCompactDisc} />
+                  </TableCell>
+                  <TableCell>{drive.device}</TableCell>
+                  <TableCell className="flex flex-col gap-2">
+                    <Progress
+                      className="w-full md:w-1/3 lg:w-1/4"
+                      value={drive.percent}
+                    />
+                    <div>
+                      {formatFileSize(drive.free) +
+                        " free of " +
+                        formatFileSize(drive.total)}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
-        </div>
-      </ContextMenuTrigger>
-
-      <ContextMenuContent className="w-64">
-        <ContextMenuItem inset>
-          Back
-          <ContextMenuShortcut>⌘[</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem inset disabled>
-          Forward
-          <ContextMenuShortcut>⌘]</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem inset>
-          Reload
-          <ContextMenuShortcut>⌘R</ContextMenuShortcut>
-        </ContextMenuItem>
-        
-      </ContextMenuContent>
-    </ContextMenu>
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }
-
-  
-{/* <div className="relative overflow-x-auto shadow-md sm:rounded-lg p-16 bg-[#1B1B1B]">
-      <table className="w-full text-sm text-left">
-        <thead>
-          <tr className="border-b">
-            <th colSpan={2} className="py-4">
-              Name
-            </th>
-            <th>Size</th>
-            <th>Created at</th>
-            <th>Modified at</th>
-          </tr>
-        </thead>
-        <tbody>
-          {files.map((file, index) => {
-            return <FileComponent key={index} file={file} />;
-          })}
-        </tbody>
-      </table>
-    </div> */}
