@@ -132,7 +132,7 @@ const FileComponent = ({file}) => {
         if(file.type == 'folder')
             router.push(`${file.path}`);
         else{
-            window.open(`http://37.205.26.74:8000${file.path}`);
+            window.open(`https://server.minelsalihagic.com${file.path}`);
         }
     };
 
@@ -140,7 +140,7 @@ const FileComponent = ({file}) => {
     const handleDelete = async () => {
       try {
         const response = await axios.delete(
-          `http://37.205.26.74:8000/delete${file.path.replace("/drive", "")}`
+          `https://server.minelsalihagic.com/delete${file.path.replace("/drive", "")}`
         );
 
         toast({
@@ -172,7 +172,7 @@ const FileComponent = ({file}) => {
     try {
       // Posaljite zahtev za preuzimanje fajla
       const response = await axios.get(
-        `http://37.205.26.74:8000/download${file.path.replace("/drive", "")}`,
+        `https://server.minelsalihagic.com/download${file.path.replace("/drive", "")}`,
         {
           responseType: "blob", // Važno za preuzimanje fajla kao blob
         }

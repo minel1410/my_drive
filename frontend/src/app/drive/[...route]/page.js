@@ -42,7 +42,7 @@ export default function Drive() {
     console.log(pathname);
     const fetchFiles = async () => {
       try {
-        const response = await axios.get(`http://37.205.26.74:8000${pathname}`);
+        const response = await axios.get(`https://server.minelsalihagic.com${pathname}`);
 
         // Proveri da li je odgovor validan
         if (response && response.data && response.data.items) {

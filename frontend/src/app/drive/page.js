@@ -66,7 +66,9 @@ export default function Drive() {
     const fetchDrives = async () => {
       try {
         setIsLoading(true); // Postavi loading na true dok čekamo podatke
-        const response = await axios.get(`http://37.205.26.74:8000/drive`);
+        const response = await axios.get(
+          `https://server.minelsalihagic.com/drive`
+        );
 
         // Proveri da li je odgovor validan
         if (response && response.data) {
